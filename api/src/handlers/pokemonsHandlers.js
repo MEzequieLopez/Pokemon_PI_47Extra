@@ -1,27 +1,36 @@
-const {
-  getPokemonById,
-  getPokemonsInfo,
-  getQueryName,
-} = require("../controllers/pokemonsControllers.js");
-const {getPokemonsAll}  = require("../utils/index,.js")
+const { getPokemonById, getPokemonsInfo, getPokemonsByName } = require("../controllers/pokemonsControllers.js");
+const { postPokemonBd } = require("../controllers/postPokemonsControllers.js");
 
-const postCreateHandler = async (req, res) => {};
+const postCreateHandler = async (req, res) => {
+  const pokemonsInfoBd = req.body;
+
+  try {
+    const CreaterPokemonsBd = postPokemonBd(pokemonsInfoBd);
+    res.status(200).json(CreaterPokemonsBd);
+  } catch (error) {
+    res.status(400).json(error.message);
+  }
+};
 
 const getPokemonsHandler = async (req, res) => {
   const { name } = req.query;
 
   try {
-    if (!name) {
-      const pokemonsList = await getPokemonsAll();
-      const pokemonsInfo = await getPokemonsInfo(pokemonsList);
-      res.status(200).json(pokemonsInfo);
+    if (name) {
+      const pokemonsForName = await getPokemonsByName(name);
+      if (pokemonsForName.length > 0) {
+        res.status(200).json(pokemonsForName);
+      } else {
+        res.status(404).json({ error: `name: ${name} not found` });
+      }
     } else {
-      const pokemonsForName =  getQueryName(name);
-      const pokemonsAll = await getPokemonsAll();
-
+      const pokemonsInfo = await getPokemonsInfo();
+      res.status(200).json(pokemonsInfo);
     }
   } catch (error) {
-    res.status(400).json({ error: `name: ${name} not found` });
+    res
+      .status(500)
+      .json({ error: "An error occurred while processing your request." });
   }
 };
 

@@ -1,63 +1,72 @@
 const { Pokemon, Type } = require("../db.js");
 const axios = require("axios");
-// const {Op} = require("sequelize");
+const { Op } = require("sequelize");
+const { infoCleaner, infoCleanerId } = require("../utils/index,.js");
+const typesNameBd = async () => {
+  const response = await axios.get(`https://pokeapi.co/api/v2/type`);
+  const typesPokemons = response.data.results;
+  for (const typesd of typesPokemons) {
+    await Type.upsert({ name: typesd.name });
+  }
+};
 
 const getPokemonById = async (id, source) => {
-  const pokemon =
-    source === "api"
-      ? (await axios.get(`https://pokeapi.co/api/v2/pokemon/${id}`)).data
-      : await Pokemon.findByPk(id, {
-          include: [
-            {
-              model: Type,
-              as: "pokemonsTypes",
-            },
-          ],
-        });
-  return pokemon;
-};
+  let pokemonType;
+  if (source === "api") {
+    const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${id}`);
 
-
-
-const getPokemonsInfo = async (pokemonsList) => {
-  const pokemonsInfos = [];
-  for (const pokemon of pokemonsList) {
-    const response = await axios.get(pokemon.url);
-    const { name, stats, id, types, sprites } = response.data;
-    const pokemonInfo = {
-      id,
-      name,
-      imageUrl: sprites.front_default,
-      stats: stats.map(({ base_stat, stat }) => ({
-        name: stat.name,
-        base_stat,
-      })),
-      types: types.map(({ type }) => ({
-        name: type.name,
-      })),
-    };
-
-    pokemonsInfos.push(pokemonInfo);
+    const pokemonTypeId = await infoCleanerId(response);
+    pokemonType = pokemonTypeId;
+  } else {
+    pokemonType = await Pokemon.findByPk(id, {
+      include: [
+        {
+          model: Type,
+          as: "types",
+          attributes: ['name'],
+          through: { attributes: [] }
+        },
+      ],
+    });
   }
-  return pokemonsInfos;
+  return pokemonType;
 };
 
-const getQueryName = async (name) => {
-  const response = await axios.get("https://pokeapi.co/api/v2/pokemon");
-  
-}
+const getPokemonsInfo = async () => {
+  const pokemonsBd = await Pokemon.findAll();
 
-// const pokemonsBd = await Pokemon.findAll({
-//   where: {
-//     name: {
-//       [Op.iLike]: '%' + name + '%'
-//     }
-//   }
-// });
+  const response = await axios.get("https://pokeapi.co/api/v2/pokemon");
+  const pokemones = response.data.results;
+
+  const infoCleairPokemonsApi = await infoCleaner(pokemones);
+  return [...pokemonsBd, ...infoCleairPokemonsApi];
+};
+
+const getPokemonsByName = async (name) => {
+  const pokemonApiBd = await Pokemon.findAll({
+    where: {
+      name: {
+        [Op.iLike]: "%" + name + "%",
+      },
+    },
+  });
+
+  const response = await axios.get("https://pokeapi.co/api/v2/pokemon");
+  const pokemones = response.data.results;
+
+  const pokemonsCleair = await infoCleaner(pokemones);
+
+  const lowerCaseName = name.toLowerCase();
+
+  const pokemonForName = pokemonsCleair.filter(
+    (pokemon) => pokemon.name.toLowerCase() === lowerCaseName
+  );
+  return [...pokemonForName, ...pokemonApiBd];
+};
 
 module.exports = {
   getPokemonById,
   getPokemonsInfo,
-  getQueryName,
-  
+  getPokemonsByName,
+  typesNameBd,
 };
