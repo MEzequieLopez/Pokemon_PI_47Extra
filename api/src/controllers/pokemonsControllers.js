@@ -35,12 +35,24 @@ const getPokemonById = async (id, source) => {
 const getPokemonsInfo = async () => {
   const pokemonsBd = await Pokemon.findAll();
 
-  const response = await axios.get("https://pokeapi.co/api/v2/pokemon");
-  const pokemones = response.data.results;
-
-  const infoCleairPokemonsApi = await infoCleaner(pokemones);
+  // const response = await axios.get("https://pokeapi.co/api/v2/pokemon");
+  // const pokemones = response.data.results;
+  // const infoCleairPokemonsApi = await infoCleaner(pokemones);
+  
+    const allPokemons = [];
+    let nextUrl = 'https://pokeapi.co/api/v2/pokemon';
+   
+    while (nextUrl) {
+       const response = await axios.get(nextUrl);
+       allPokemons.push(...response.data.results);
+       nextUrl = response.data.next;
+    }
+   
+   const infoCleairPokemonsApi = await infoCleaner(allPokemons);
+   
   return [...pokemonsBd, ...infoCleairPokemonsApi];
 };
+
 
 const getPokemonsByName = async (name) => {
   const pokemonApiBd = await Pokemon.findAll({
@@ -51,8 +63,16 @@ const getPokemonsByName = async (name) => {
     },
   });
 
-  const response = await axios.get("https://pokeapi.co/api/v2/pokemon");
-  const pokemones = response.data.results;
+  // const response = await axios.get("https://pokeapi.co/api/v2/pokemon");
+  // const pokemones = response.data.results;
+  const pokemones = [];
+    let nextUrl = 'https://pokeapi.co/api/v2/pokemon';
+   
+    while (nextUrl) {
+       const response = await axios.get(nextUrl);
+       pokemones.push(...response.data.results);
+       nextUrl = response.data.next;
+    }
 
   const pokemonsCleair = await infoCleaner(pokemones);
 
